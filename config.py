@@ -1,4 +1,4 @@
-"""Config — reads from .env file or environment variables."""
+"""Simple config — reads from .env file or environment variables."""
 
 import os
 from pathlib import Path
@@ -30,6 +30,16 @@ BASE_URL = os.environ.get(
 LLM_MODEL = os.environ.get("LLM_MODEL", "qwen-plus")
 RAG_URL = os.environ.get("RAG_URL", "http://localhost:8100")
 
+# ToolHub: allow access to workspace directories, not entire HOME
+_TOOLHUB_ROOTS = os.environ.get(
+    "TOOLHUB_ROOTS",
+    str(Path.home() / "Downloads")
+    + os.pathsep
+    + "D:\\AI_Control"
+    + os.pathsep
+    + "G:\\FUNASR",
+)
+
 _MCP_DIR = Path(__file__).resolve().parent.parent / "mcp-toolhub"
 TOOLHUB_SERVER = os.environ.get("TOOLHUB_SERVER", str(_MCP_DIR / "server.py"))
-TOOLHUB_ROOT = os.environ.get("TOOLHUB_ROOT", os.environ.get("USERPROFILE", str(Path.home())))
+TOOLHUB_ROOT = os.environ.get("TOOLHUB_ROOT", _TOOLHUB_ROOTS)

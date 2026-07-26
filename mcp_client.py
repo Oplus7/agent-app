@@ -1,5 +1,6 @@
 """MCP stdio client for ToolHub filesystem tools."""
 
+import os
 import sys
 
 from mcp import ClientSession
@@ -7,9 +8,9 @@ from mcp.client.stdio import stdio_client, StdioServerParameters
 
 
 class ToolHubClient:
-    def __init__(self, server_path: str, allowed_root: str):
+    def __init__(self, server_path: str, allowed_roots: str):
         self._server = server_path
-        self._root = allowed_root
+        self._roots = allowed_roots.split(os.pathsep)
         self._session: ClientSession | None = None
         self._tools: list[dict] = []
         self._stdio_ctx = None
@@ -18,7 +19,7 @@ class ToolHubClient:
     async def connect(self):
         params = StdioServerParameters(
             command=sys.executable,
-            args=[self._server, self._root],
+            args=[self._server] + self._roots,
         )
         self._stdio_ctx = stdio_client(params)
         read, write = await self._stdio_ctx.__aenter__()
