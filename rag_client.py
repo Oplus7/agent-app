@@ -15,7 +15,7 @@ class RAGClient:
         except Exception:
             return False
 
-    def search(self, query: str, collection: str = "default", top_k: int = 5) -> list[dict]:
+    def search(self, query: str, collection: str = "rag_documents", top_k: int = 5) -> list[dict]:
         """Search knowledge base for top_k relevant chunks."""
         try:
             r = self._client.post(
@@ -24,16 +24,17 @@ class RAGClient:
             )
             r.raise_for_status()
             data = r.json()
-            return data.get("results", [])
+            sources = data.get("sources", [])
+            return sources
         except Exception as e:
             return [{"error": str(e)}]
 
-    def chat(self, query: str, collection: str = "default") -> str:
+    def chat(self, query: str, collection: str = "rag_documents") -> str:
         """Chat with knowledge base — RAG-augmented answer."""
         try:
             r = self._client.post(
-                f"{self.base_url}/api/chat",
-                json={"query": query, "collection": collection},
+                f"{self.base_url}/api/chat?collection={collection}",
+                json={"question": query, "k": 5},
             )
             r.raise_for_status()
             data = r.json()
@@ -50,7 +51,7 @@ class RAGClient:
         lines = []
         for i, r in enumerate(results, 1):
             content = r.get("content", str(r)[:500])
-            source = r.get("source", r.get("media_name", "unknown"))
+            source = r.get("source_file", r.get("media_name", r.get("source", "unknown")))
             score = r.get("score", "?")
             lines.append(f"[{i}] ({source}, score={score})\n{content}")
         return "\n\n".join(lines)
