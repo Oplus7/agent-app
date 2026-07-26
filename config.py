@@ -1,11 +1,26 @@
-"""Simple config — set env vars or edit defaults below.
-
-Required: ALIBABA_API_KEY (env var)
-All others have sensible defaults.
-"""
+"""Config — reads from .env file or environment variables."""
 
 import os
 from pathlib import Path
+
+
+def _load_dotenv(env_path: str) -> None:
+    try:
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                os.environ.setdefault(key, val)
+    except FileNotFoundError:
+        pass
+
+
+_ENV_PATH = Path(__file__).parent / ".env"
+_load_dotenv(str(_ENV_PATH))
 
 ALIBABA_API_KEY = os.environ.get("ALIBABA_API_KEY", "")
 BASE_URL = os.environ.get(

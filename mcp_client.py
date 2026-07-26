@@ -21,16 +21,19 @@ class ToolHubClient:
         self._read = None
         self._write = None
 
-    async def connect(self):
+    async def connect(self, timeout: float = 5.0):
         params = StdioServerParameters(
             command=sys.executable,
             args=[self._server, self._root],
         )
-        transport = await stdio_client(params).__aenter__()
+        transport = await asyncio.wait_for(
+            stdio_client(params).__aenter__(), timeout=timeout
+        )
         self._read, self._write = transport
         self._session = ClientSession(self._read, self._write)
-        await self._session.initialize()
-        response = await self._session.list_tools()
+        init_task = asyncio.create_task(self._session.initialize())
+        await asyncio.wait_for(init_task, timeout=timeout)
+        response = await asyncio.wait_for(self._session.list_tools(), timeout=timeout)
         for tool in response.tools:
             params = tool.inputSchema if hasattr(tool, "inputSchema") else {}
             self._tools.append({
