@@ -10,7 +10,7 @@ class RAGClient:
 
     def health(self) -> bool:
         try:
-            r = self._client.get(f"{self.base_url}/health")
+            r = self._client.get(f"{self.base_url}/api/health")
             return r.status_code == 200
         except Exception:
             return False

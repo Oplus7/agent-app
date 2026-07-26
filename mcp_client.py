@@ -1,11 +1,5 @@
-"""MCP stdio client for ToolHub filesystem tools.
+"""MCP stdio client for ToolHub filesystem tools."""
 
-Connects to mcp-toolhub server via subprocess stdio,
-discovers tools dynamically, and provides call_tool().
-"""
-
-import asyncio
-import json
 import sys
 
 from mcp import ClientSession
@@ -18,30 +12,28 @@ class ToolHubClient:
         self._root = allowed_root
         self._session: ClientSession | None = None
         self._tools: list[dict] = []
-        self._read = None
-        self._write = None
+        self._stdio_ctx = None
+        self._session_ctx = None
 
-    async def connect(self, timeout: float = 5.0):
+    async def connect(self):
         params = StdioServerParameters(
             command=sys.executable,
             args=[self._server, self._root],
         )
-        transport = await asyncio.wait_for(
-            stdio_client(params).__aenter__(), timeout=timeout
-        )
-        self._read, self._write = transport
-        self._session = ClientSession(self._read, self._write)
-        init_task = asyncio.create_task(self._session.initialize())
-        await asyncio.wait_for(init_task, timeout=timeout)
-        response = await asyncio.wait_for(self._session.list_tools(), timeout=timeout)
+        self._stdio_ctx = stdio_client(params)
+        read, write = await self._stdio_ctx.__aenter__()
+        self._session_ctx = ClientSession(read, write)
+        self._session = await self._session_ctx.__aenter__()
+        await self._session.initialize()
+        response = await self._session.list_tools()
         for tool in response.tools:
-            params = tool.inputSchema if hasattr(tool, "inputSchema") else {}
+            ps = tool.inputSchema if hasattr(tool, "inputSchema") else {}
             self._tools.append({
                 "type": "function",
                 "function": {
                     "name": tool.name,
                     "description": tool.description or "",
-                    "parameters": params,
+                    "parameters": ps,
                 },
             })
 
@@ -67,6 +59,10 @@ class ToolHubClient:
             return f"Error: {e}"
 
     async def disconnect(self):
-        if self._session:
-            await self._session.__aexit__(None, None, None)
+        if self._session_ctx:
+            await self._session_ctx.__aexit__(None, None, None)
+            self._session_ctx = None
             self._session = None
+        if self._stdio_ctx:
+            await self._stdio_ctx.__aexit__(None, None, None)
+            self._stdio_ctx = None

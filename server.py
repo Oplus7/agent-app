@@ -162,7 +162,29 @@ _agent: AgentService | None = None
 async def startup():
     global _agent
     _agent = AgentService()
-    await _agent.connect()
+    # Check RAG immediately
+    try:
+        _agent._rag_ok = _agent.rag.health()
+    except Exception:
+        _agent._rag_ok = False
+    # Connect ToolHub in background task with timeout
+    async def _connect_th():
+        try:
+            await _agent.toolhub.connect()
+            _agent._toolhub_ok = True
+            _agent._tool_names = _agent.toolhub.tool_names
+        except Exception:
+            _agent._toolhub_ok = False
+    import asyncio
+    task = asyncio.create_task(_connect_th())
+    try:
+        await asyncio.wait_for(asyncio.shield(task), timeout=8.0)
+    except (TimeoutError, asyncio.TimeoutError):
+        _agent._toolhub_ok = False
+        print("ToolHub connection timed out")
+    except Exception as e:
+        _agent._toolhub_ok = False
+        print(f"ToolHub: {e}")
     print(f"rag={_agent._rag_ok}  toolhub={_agent._toolhub_ok}  tools={_agent._tool_names}")
 
 
