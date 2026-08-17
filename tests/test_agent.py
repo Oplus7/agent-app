@@ -45,7 +45,7 @@ async def test_agent_responds_directly():
     """Agent should print LLM response when no tool needed."""
     from agent import Agent
 
-    config.ALIBABA_API_KEY = "test-key"
+    config.DEEPSEEK_API_KEY = "test-key"
     agent = Agent()
 
     agent.rag.health = lambda: False
@@ -73,7 +73,7 @@ async def test_agent_uses_tools():
     """Agent should call tool, feed result back, then respond."""
     from agent import Agent
 
-    config.ALIBABA_API_KEY = "test-key"
+    config.DEEPSEEK_API_KEY = "test-key"
     agent = Agent()
 
     agent.rag.health = lambda: False

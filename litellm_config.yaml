@@ -1,0 +1,17 @@
+model_list:
+  - model_name: ollama-chat
+    litellm_params:
+      model: ollama/qwen3:4b
+      api_base: http://localhost:11434
+      # Disable qwen3 thinking: via litellm, enabling thinking makes answers empty and
+      # buries tool calls inside reasoning_content. Keep it off so answers/tools are reliable.
+      # The UI thinking-display code is ready; enable when a model exposes reasoning stably.
+      reasoning_effort: "none"
+
+  - model_name: deepseek-flash
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+litellm_settings:
+  drop_params: true

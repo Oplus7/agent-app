@@ -3,234 +3,513 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agent App — Personal AI Agent</title>
+<title>AI Workbench</title>
 <style>
 :root {
-  --bg: #1a1a2e;
-  --panel: #16213e;
-  --surface: #0f3460;
-  --accent: #e94560;
-  --text: #eaeaea;
-  --dim: #8892b0;
-  --tool-bg: #1a2744;
-  --user-msg: #0f3460;
-  --agent-msg: #1a1a2e;
-  --border: #2a3a5c;
+  --bg: #1a1a2e; --panel: #16213e; --surface: #0f3460;
+  --accent: #e94560; --accent2: #00c853; --text: #eaeaea; --dim: #8892b0;
+  --tool-bg: #1a2744; --user-msg: #0f3460; --agent-msg: #1a1a2e; --border: #2a3a5c;
+  --hover: #1e3550; --warn: #f0a030; --sidebar-w: 260px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font:14px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
-header {
+body { font:13px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ─── Top Launch Panel ─── */
+#launch-bar {
   background:var(--panel); border-bottom:1px solid var(--border);
-  padding:10px 20px; display:flex; justify-content:space-between; align-items:center;
-  font-size:13px;
+  padding:5px 14px; display:flex; align-items:center; gap:10px; flex-shrink:0; flex-wrap:wrap;
+  font-size:11px;
 }
-header h1 { font-size:16px; font-weight:600; }
-.status-dots { display:flex; gap:12px; }
-.status-dot { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--dim); }
-.status-dot .dot { width:8px; height:8px; border-radius:50%; background:var(--dim); }
-.status-dot .dot.on { background:#00c853; }
-.chat { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:8px; }
-.msg { max-width:80%; padding:10px 14px; border-radius:12px; line-height:1.5; }
+#launch-bar h1 { font-size:13px; font-weight:600; margin-right:4px; white-space:nowrap; }
+#launch-dots { display:flex; gap:1px; }
+.launch-dot {
+  display:flex; align-items:center; gap:4px; padding:3px 8px;
+  border-radius:4px; border:1px solid transparent; cursor:default;
+}
+.launch-dot .ld { width:6px; height:6px; border-radius:50%; background:var(--dim); flex-shrink:0; }
+.launch-dot .ld.on { background:var(--accent2); }
+.launch-dot .ld.warn { background:var(--warn); }
+.launch-dot .ld.off { background:var(--accent); }
+.launch-btn {
+  padding:3px 10px; border-radius:4px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text); cursor:pointer; font-size:11px;
+}
+.launch-btn:hover { border-color:var(--accent); }
+.launch-btn.start { border-color:var(--accent2); color:var(--accent2); }
+.launch-btn.stop { border-color:var(--accent); color:var(--accent); }
+.launch-spacer { flex:1; }
+.model-select {
+  background:var(--surface); border:1px solid var(--border); border-radius:4px;
+  color:var(--text); padding:4px 8px; font-size:11px; outline:none; cursor:pointer;
+}
+.model-select:focus { border-color:var(--accent); }
+
+/* ─── Main layout ─── */
+.main { display:flex; flex:1; overflow:hidden; }
+.chat-col { flex:1; display:flex; flex-direction:column; min-width:0; }
+.sidebar {
+  width:var(--sidebar-w); background:var(--panel); border-left:1px solid var(--border);
+  display:flex; flex-direction:column; flex-shrink:0;
+}
+.sidebar-tabs {
+  display:flex; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.sidebar-tab {
+  flex:1; text-align:center; padding:7px 0; cursor:pointer; font-size:11px;
+  color:var(--dim); border-bottom:2px solid transparent; transition:.15s;
+}
+.sidebar-tab:hover { color:var(--text); }
+.sidebar-tab.active { color:var(--text); border-bottom-color:var(--accent); }
+.sidebar-content { flex:1; overflow-y:auto; display:none; flex-direction:column; }
+.sidebar-content.active { display:flex; }
+
+/* ─── Chat ─── */
+.chat { flex:1; overflow-y:auto; padding:10px 14px; display:flex; flex-direction:column; gap:5px; }
+.msg { max-width:80%; padding:7px 10px; border-radius:8px; line-height:1.5; font-size:13px; }
 .msg.user { align-self:flex-end; background:var(--user-msg); border:1px solid var(--border); }
 .msg.agent { align-self:flex-start; background:var(--agent-msg); border:1px solid var(--border); }
 .msg code { font-size:12px; }
-.msg pre { background:#0a0a1a; padding:8px 12px; border-radius:6px; overflow-x:auto; margin:6px 0; font-size:12px; }
+.msg pre { background:#0a0a1a; padding:6px 10px; border-radius:6px; overflow-x:auto; margin:4px 0; font-size:12px; }
 .tool-block { align-self:flex-start; width:100%; max-width:85%; }
 .tool-toggle {
-  background:var(--tool-bg); border:1px solid var(--border); border-radius:8px;
-  padding:8px 12px; cursor:pointer; font-size:12px; color:var(--dim);
-  display:flex; align-items:center; gap:8px; width:100%;
+  background:var(--tool-bg); border:1px solid var(--border); border-radius:5px;
+  padding:5px 8px; cursor:pointer; font-size:11px; color:var(--dim);
+  display:flex; align-items:center; gap:5px; width:100%;
 }
 .tool-toggle:hover { border-color:var(--accent); }
 .tool-toggle .arrow { transition:transform .2s; }
 .tool-toggle.open .arrow { transform:rotate(90deg); }
 .tool-result {
-  display:none; padding:10px 12px; margin-top:4px;
-  background:#0a0a1a; border-radius:8px; font-size:12px;
-  max-height:200px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;
+  display:none; padding:6px 8px; margin-top:2px;
+  background:#0a0a1a; border-radius:5px; font-size:11px;
+  max-height:160px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;
 }
 .tool-result.show { display:block; }
-.tool-status { font-size:11px; margin-left:auto; }
+.thinking-block .tool-toggle { border-color:#3a5a8c; }
+.thinking-block .tool-toggle strong { color:#9db4e0; }
+.tool-status { font-size:10px; margin-left:auto; }
+.empty { text-align:center; color:var(--dim); margin-top:60px; }
+.empty h2 { font-size:16px; margin-bottom:4px; color:var(--text); }
+.empty p { font-size:12px; }
+
+/* ─── Input ─── */
 .input-area {
   background:var(--panel); border-top:1px solid var(--border);
-  padding:12px 20px; display:flex; gap:8px;
+  padding:8px 12px; display:flex; gap:6px; flex-shrink:0;
 }
 .input-area input {
   flex:1; background:var(--surface); border:1px solid var(--border);
-  border-radius:8px; padding:10px 14px; color:var(--text); font-size:14px;
-  outline:none;
+  border-radius:6px; padding:8px 12px; color:var(--text); font-size:13px; outline:none;
 }
 .input-area input:focus { border-color:var(--accent); }
 .input-area button {
-  background:var(--accent); border:none; border-radius:8px;
-  padding:10px 18px; color:#fff; font-size:14px; font-weight:600; cursor:pointer;
+  background:var(--accent); border:none; border-radius:6px;
+  padding:8px 14px; color:#fff; font-size:13px; font-weight:600; cursor:pointer;
 }
 .input-area button:hover { opacity:.9; }
 .input-area button:disabled { opacity:.5; cursor:default; }
-.empty { text-align:center; color:var(--dim); margin-top:40px; }
-.empty h2 { font-size:18px; margin-bottom:6px; color:var(--text); }
-.empty p { font-size:13px; }
+
+/* ─── Sidebar panels ─── */
+.side-pad { padding:10px; }
+.side-head { font-size:11px; font-weight:600; color:var(--dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px; }
+.side-btn {
+  display:block; width:100%; padding:7px 0; margin-bottom:5px;
+  border:1px solid var(--border); border-radius:5px;
+  background:var(--surface); color:var(--text); cursor:pointer; font-size:11px; text-align:center;
+}
+.side-btn:hover { border-color:var(--accent); }
+.side-btn.accent { border-color:var(--accent); color:var(--accent); }
+.side-input {
+  width:100%; background:var(--surface); border:1px solid var(--border);
+  border-radius:4px; padding:6px 8px; color:var(--text); font-size:12px; outline:none; margin-bottom:6px;
+}
+.side-input:focus { border-color:var(--accent); }
+.side-result {
+  font-size:11px; max-height:300px; overflow-y:auto; margin-top:6px;
+}
+.side-result .item {
+  padding:5px 6px; border-bottom:1px solid rgba(255,255,255,.04);
+  font-size:11px;
+}
+.side-result .item .src { color:var(--accent); font-size:10px; }
+.side-status { font-size:11px; color:var(--dim); padding:8px 10px; text-align:center; }
+.doc-upload-label {
+  display:block; width:100%; padding:7px 0; margin-bottom:5px; text-align:center;
+  border:1px dashed var(--border); border-radius:5px; cursor:pointer;
+  font-size:11px; color:var(--dim); background:transparent;
+}
+.doc-upload-label:hover { border-color:var(--accent); color:var(--text); }
+.doc-upload-label input[type=file] { display:none; }
+.file-item {
+  display:flex; align-items:center; gap:4px; padding:4px 8px; font-size:11px;
+  border-bottom:1px solid rgba(255,255,255,.03); cursor:pointer;
+}
+.file-item:hover { background:var(--hover); }
+.file-item .del { color:var(--accent); cursor:pointer; margin-left:auto; padding:0 4px; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Agent App</h1>
-  <div class="status-dots">
-    <span class="status-dot"><span class="dot" id="rag-dot"></span> RAG</span>
-    <span class="status-dot"><span class="dot" id="mcp-dot"></span> ToolHub</span>
-    <span class="status-dot">LLM: qwen-plus</span>
-  </div>
-</header>
-
-<div class="chat" id="chat">
-  <div class="empty">
-    <h2>Personal AI Agent</h2>
-    <p>Ask me to search your notes, read files, or answer questions.</p>
-  </div>
+<!-- ═══ Top Launch Panel ═══ -->
+<div id="launch-bar">
+  <h1>AI Workbench</h1>
+  <button class="launch-btn start" onclick="launchAction('all','start')">Start All</button>
+  <button class="launch-btn stop" onclick="launchAction('all','stop')">Stop All</button>
+  <div id="launch-dots"></div>
+  <span class="launch-spacer"></span>
+  <select class="model-select" id="modelSelect">
+    <option value="ollama-chat">qwen3:4b (Local)</option>
+    <option value="deepseek-flash">DeepSeek Flash (Cloud)</option>
+  </select>
 </div>
 
-<div class="input-area">
-  <input id="input" placeholder="Type a message..." autofocus>
-  <button id="send">Send</button>
+<!-- ═══ Main: Chat + Sidebar ═══ -->
+<div class="main">
+  <div class="chat-col">
+    <div class="chat" id="chat">
+      <div class="empty"><h2>AI Workbench</h2><p>Start services above, then chat.</p></div>
+    </div>
+    <div class="input-area">
+      <input id="input" placeholder="Type a message..." autofocus>
+      <button id="send">Send</button>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" data-tab="n8n">n8n</div>
+      <div class="sidebar-tab" data-tab="rag">RAG</div>
+      <div class="sidebar-tab" data-tab="files">Files</div>
+    </div>
+
+    <!-- n8n tab -->
+    <div class="sidebar-content active" id="tab-n8n">
+      <div class="side-pad">
+        <div class="side-head">Workflow Automation</div>
+        <button class="side-btn accent" onclick="triggerWorkflow()">Trigger Daily Report</button>
+        <button class="side-btn" onclick="window.open('http://localhost:5678','_blank')">Open n8n UI &#x2197;</button>
+        <div class="side-status" id="n8n-msg"></div>
+        <div class="side-head" style="margin-top:10px">Workflow Status</div>
+        <div class="side-status" id="n8n-status">n8n service: checking...</div>
+      </div>
+    </div>
+
+    <!-- RAG tab -->
+    <div class="sidebar-content" id="tab-rag">
+      <div class="side-pad">
+        <div class="side-head">Search Knowledge Base</div>
+        <input class="side-input" id="ragQuery" placeholder="Search query..." onkeydown="if(event.key==='Enter')ragSearch()">
+        <button class="side-btn" onclick="ragSearch()">Search</button>
+        <div class="side-result" id="ragResults"></div>
+
+        <div class="side-head" style="margin-top:12px">Documents</div>
+        <label class="doc-upload-label">
+          + Upload Document
+          <input type="file" id="docUpload" accept=".txt,.md,.pdf,.doc,.docx">
+        </label>
+        <div class="side-result" id="docList"></div>
+      </div>
+    </div>
+
+    <!-- Files tab -->
+    <div class="sidebar-content" id="tab-files">
+      <div class="side-pad">
+        <div class="side-head">File Browser</div>
+        <div id="fileBreadcrumb"></div>
+        <div id="fileList"></div>
+        <div id="filePreview" style="display:none;margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-bottom:4px">
+            <span id="previewName"></span>
+            <span onclick="closePreview()" style="color:var(--accent);cursor:pointer">&#x2715;</span>
+          </div>
+          <div id="previewBody" style="font-size:10px;max-height:250px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;background:#0a0a1a;padding:6px;border-radius:4px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
+const LAUNCHER = 'http://localhost:8102';
+
+// ═══════════════ Launch Panel ═══════════════
+const SVC = [
+  { key:'launcher', label:'Launcher', port:8102, healthUrl:null },
+  { key:'ollama', label:'Ollama', port:11434, healthUrl:'http://localhost:11434/api/tags' },
+  { key:'local-rag', label:'RAG', port:8100, healthUrl:'http://localhost:8100/api/health' },
+  { key:'mcp-toolhub', label:'MCP', port:8000, healthUrl:null },
+  { key:'litellm', label:'GW', port:4000, healthUrl:'http://localhost:4000/v1/models' },
+  { key:'n8n', label:'n8n', port:5678, healthUrl:'http://localhost:5678/healthz' },
+  { key:'agent-app', label:'Agent', port:8101, healthUrl:'http://localhost:8101/api/status' },
+];
+
+async function refreshLaunch() {
+  const dots = document.getElementById('launch-dots');
+  try {
+    const r = await fetch(LAUNCHER + '/status');
+    const d = await r.json();
+    let html = '';
+    for (const svc of SVC) {
+      let healthy = false, pid = null;
+      if (svc.key === 'launcher') {
+        healthy = true;
+      } else {
+        const s = d.services?.find(x => x.key === svc.key);
+        healthy = s?.healthy ?? false;
+        pid = s?.pid ?? null;
+      }
+      const cls = healthy ? 'on' : 'off';
+      const title = pid ? `PID ${pid}` : svc.label;
+      html += `<span class="launch-dot" title="${title}"><span class="ld ${cls}"></span>${svc.label}</span>`;
+    }
+    dots.innerHTML = html;
+    document.getElementById('n8n-status').textContent =
+      d.services?.find(x=>x.key==='n8n')?.healthy ? 'n8n: running' : 'n8n: offline';
+  } catch(e) {
+    dots.innerHTML = '<span style="color:var(--accent);font-size:11px">Launcher offline — start it first</span>';
+  }
+}
+
+async function launchAction(key, action) {
+  try {
+    await fetch(`${LAUNCHER}/${action}/${key}`, {method:'POST'});
+  } catch(e) {}
+  setTimeout(refreshLaunch, 800);
+  setTimeout(refreshLaunch, 2500);
+}
+
+// ═══════════════ Model Switch ═══════════════
+document.getElementById('modelSelect').onchange = async function() {
+  await fetch('/api/model', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:this.value})
+  });
+};
+
+// ═══════════════ Tabs ═══════════════
+document.querySelectorAll('.sidebar-tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.sidebar-tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.sidebar-content').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'files') browseFiles('');
+  };
+});
+
+// ═══════════════ n8n ═══════════════
+async function triggerWorkflow() {
+  const msg = document.getElementById('n8n-msg');
+  msg.textContent = 'Triggering...';
+  try {
+    const r = await fetch('http://localhost:5678/webhook/daily-report', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({trigger:'manual'})
+    });
+    msg.textContent = r.ok ? 'Workflow triggered' : 'Failed: ' + r.status;
+  } catch(e) {
+    msg.textContent = 'Cannot reach n8n. Start it first.';
+  }
+}
+
+// ═══════════════ RAG ═══════════════
+async function ragSearch() {
+  const q = document.getElementById('ragQuery').value.trim();
+  const el = document.getElementById('ragResults');
+  if (!q) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="side-status">searching...</div>';
+  try {
+    const r = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message: q, history:[]})
+    });
+    const reader = r.body.getReader();
+    const dec = new TextDecoder(); let buf = '', txt = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const l of lines) {
+        if (!l.startsWith('data: ')) continue;
+        try {
+          const e = JSON.parse(l.slice(6));
+          if (e.type === 'message') txt += e.content;
+          if (e.type === 'tool_result') {
+            const item = document.createElement('div');
+            item.className = 'item';
+            item.innerHTML = `<div class="src">tool: ${escHtml(e.tool)}</div><div>${escHtml(e.content||'').slice(0,400)}</div>`;
+            el.appendChild(item);
+          }
+        } catch(_) {}
+      }
+    }
+    if (txt && !el.textContent) el.innerHTML = '<div class="item">'+escHtml(txt)+'</div>';
+    if (!el.innerHTML) el.innerHTML = '<div class="side-status">No results</div>';
+  } catch(e) {
+    el.innerHTML = '<div class="side-status">Error: search failed</div>';
+  }
+}
+
+// ═══════════════ Document Management ═══════════════
+async function refreshDocs() {
+  const el = document.getElementById('docList');
+  try {
+    const r = await fetch('/api/documents');
+    const docs = await r.json();
+    if (!Array.isArray(docs) || docs.length === 0) {
+      el.innerHTML = '<div class="side-status">no documents</div>'; return;
+    }
+    el.innerHTML = docs.map(d =>
+      `<div class="file-item">
+        <span>&#x1F4C4; ${escHtml(d.id||d.name||d.filename||'?')}</span>
+        <span class="del" data-id="${escHtml(d.id||'')}">&#x2715;</span>
+      </div>`
+    ).join('');
+    el.querySelectorAll('.del').forEach(del => {
+      del.onclick = async () => {
+        await fetch('/api/documents/'+del.dataset.id, {method:'DELETE'});
+        refreshDocs();
+      };
+    });
+  } catch(e) { el.innerHTML = '<div class="side-status">local-rag offline</div>'; }
+}
+
+document.getElementById('docUpload').onchange = async function() {
+  const f = this.files[0]; if (!f) return;
+  const fd = new FormData(); fd.append('file', f);
+  document.getElementById('docList').innerHTML = '<div class="side-status">uploading...</div>';
+  try { await fetch('/api/documents/upload', {method:'POST', body:fd}); } catch(_) {}
+  this.value = ''; setTimeout(refreshDocs, 1500);
+};
+
+// ═══════════════ File Browser ═══════════════
+let currentPath = '';
+async function browseFiles(path) {
+  currentPath = path || '';
+  const el = document.getElementById('fileList');
+  el.innerHTML = '<div class="side-status">loading...</div>';
+  try {
+    const r = await fetch('/api/files'+(path?'?path='+encodeURIComponent(path):''));
+    const d = await r.json();
+    if (!d.ok) { el.innerHTML = '<div class="side-status">Error</div>'; return; }
+    let h = renderBc(d.path);
+    for (const e of d.entries) {
+      const icon = e.type==='dir' ? '&#x1F4C1;' : '&#x1F4C4;';
+      const sz = e.size!=null ? formatSize(e.size) : '';
+      h += `<div class="file-item ${e.type}" data-path="${escHtml(e.path)}">
+        <span>${icon}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.name)}</span>
+        <span style="font-size:10px;color:var(--dim)">${sz}</span></div>`;
+    }
+    el.innerHTML = h;
+    el.querySelectorAll('.file-item.dir').forEach(x => x.onclick = () => browseFiles(x.dataset.path));
+    el.querySelectorAll('.file-item.file').forEach(x => x.onclick = () => previewFile(x.dataset.path, x.querySelector('span:nth-child(2)').textContent));
+    el.querySelectorAll('.fb-crumb').forEach(x => x.onclick = () => browseFiles(x.dataset.crumb||''));
+  } catch(_) { el.innerHTML = '<div class="side-status">Error</div>'; }
+}
+function renderBc(p) {
+  if (!p) return '';
+  const parts = p.split('\\'); let h = '<div style="font-size:10px;color:var(--dim);padding:2px 0 4px">';
+  h += '<span class="fb-crumb" data-crumb="" style="color:var(--accent);cursor:pointer">Root</span>';
+  let acc = '';
+  for (const s of parts) { if(!s) continue; acc += (acc?'\\':'')+s;
+    h += ' / <span class="fb-crumb" data-crumb="'+escHtml(acc)+'" style="cursor:pointer;color:var(--text)">'+escHtml(s)+'</span>'; }
+  return h+'</div>';
+}
+async function previewFile(path, name) {
+  document.getElementById('filePreview').style.display='block';
+  document.getElementById('previewName').textContent=name;
+  const body = document.getElementById('previewBody'); body.textContent='loading...';
+  try {
+    const r = await fetch('/api/files/read?path='+encodeURIComponent(path));
+    const d = await r.json();
+    body.textContent = d.ok ? d.content.slice(0,8000) : 'Error';
+  } catch(_) { body.textContent='Error'; }
+}
+function closePreview() { document.getElementById('filePreview').style.display='none'; }
+function formatSize(b) { return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'; }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ═══════════════ Chat ═══════════════
+let history = [];
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
-let history = [];
 
-function addMessage(role, content) {
-  const el = document.createElement('div');
-  el.className = `msg ${role}`;
+function addMsg(role, content) {
+  const el = document.createElement('div'); el.className = 'msg ' + role;
   el.innerHTML = content
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-    .replace(/\n/g, '<br>');
-  removeEmpty();
-  chat.appendChild(el);
-  chat.scrollTop = chat.scrollHeight;
-  return el;
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>').replace(/\n/g,'<br>');
+  removeEmpty(); chat.appendChild(el); chat.scrollTop=chat.scrollHeight; return el;
 }
-
 function addToolBlock(tool, args) {
   removeEmpty();
-  const wrapper = document.createElement('div');
-  wrapper.className = 'tool-block';
-
-  const toggle = document.createElement('div');
-  toggle.className = 'tool-toggle';
-  toggle.innerHTML = `<span class="arrow">&#9654;</span> <strong>${tool}</strong> <span class="tool-status">running...</span>`;
-
-  const result = document.createElement('div');
-  result.className = 'tool-result';
-
-  toggle.onclick = () => {
-    toggle.classList.toggle('open');
-    result.classList.toggle('show');
-  };
-
-  wrapper.appendChild(toggle);
-  wrapper.appendChild(result);
-  chat.appendChild(wrapper);
-  chat.scrollTop = chat.scrollHeight;
-
-  return {
-    done: (status, content) => {
-      toggle.querySelector('.tool-status').textContent = status || '';
-      toggle.classList.add('open');
-      result.classList.add('show');
-      result.textContent = content ? content.slice(0, 3000) : '';
-      chat.scrollTop = chat.scrollHeight;
-    }
-  };
+  const w = document.createElement('div'); w.className='tool-block';
+  const t = document.createElement('div'); t.className='tool-toggle';
+  t.innerHTML=`<span class="arrow">&#9654;</span> <strong>${escHtml(tool)}</strong><span class="tool-status">running...</span>`;
+  const r = document.createElement('div'); r.className='tool-result';
+  t.onclick=()=>{t.classList.toggle('open');r.classList.toggle('show')};
+  w.appendChild(t);w.appendChild(r);chat.appendChild(w);chat.scrollTop=chat.scrollHeight;
+  return {done:(s,c)=>{t.querySelector('.tool-status').textContent=s||'';t.classList.add('open');r.classList.add('show');r.textContent=c?c.slice(0,3000):'';chat.scrollTop=chat.scrollHeight}};
 }
-
-function removeEmpty() {
-  const empty = chat.querySelector('.empty');
-  if (empty) empty.remove();
+function addThinking() {
+  removeEmpty();
+  const w = document.createElement('div'); w.className='tool-block thinking-block';
+  const t = document.createElement('div'); t.className='tool-toggle open';
+  t.innerHTML=`<span class="arrow">&#9654;</span> <strong>&#x1F4AD; Thinking</strong><span class="tool-status">...</span>`;
+  const r = document.createElement('div'); r.className='tool-result show';
+  t.onclick=()=>{t.classList.toggle('open');r.classList.toggle('show')};
+  w.appendChild(t);w.appendChild(r);chat.appendChild(w);chat.scrollTop=chat.scrollHeight;
+  return {append:(c)=>{r.textContent+=c;chat.scrollTop=chat.scrollHeight},done:()=>{t.querySelector('.tool-status').textContent='done'}};
 }
+function removeEmpty() { const e=chat.querySelector('.empty'); if(e)e.remove(); }
 
 async function send() {
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  sendBtn.disabled = true;
-
-  addMessage('user', text);
-
+  const text = input.value.trim(); if (!text) return;
+  input.value=''; sendBtn.disabled=true; addMsg('user', text);
   try {
     const resp = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text, history})
     });
-
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    let toolBlocks = {};
-    let responseText = '';
-
+    const reader = resp.body.getReader(); const dec = new TextDecoder();
+    let buf='', tbs={}, thinking=null, agentEl=null, raw='';
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-
-      const lines = buf.split('\n');
-      buf = lines.pop();
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
+      const {done, value} = await reader.read(); if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const l of lines) {
+        if (!l.startsWith('data: ')) continue;
         try {
-          const event = JSON.parse(line.slice(6));
-          switch (event.type) {
-            case 'tool_call':
-              toolBlocks[event.tool] = addToolBlock(event.tool, event.args);
-              break;
-            case 'tool_result':
-              if (toolBlocks[event.tool]) {
-                const preview = event.content ? event.content.slice(0, 500) : '';
-                const status = preview ? `${preview.length} chars` : 'done';
-                toolBlocks[event.tool].done(status, event.content);
-              }
-              break;
-            case 'message':
-              responseText = event.content;
-              addMessage('agent', event.content);
-              break;
-            case 'error':
-              addMessage('agent', `Error: ${event.content}`);
-              break;
-            case 'done':
-              break;
+          const e = JSON.parse(l.slice(6));
+          switch (e.type) {
+            case 'thinking': if (!thinking) thinking=addThinking(); thinking.append(e.content); break;
+            case 'thinking_clear': const tb=chat.querySelector('.thinking-block:last-of-type');if(tb)tb.remove();thinking=null;break;
+            case 'message': if(!agentEl){removeEmpty();agentEl=document.createElement('div');agentEl.className='msg agent';chat.appendChild(agentEl);}raw+=e.content;agentEl.innerHTML=raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');chat.scrollTop=chat.scrollHeight;break;
+            case 'message_clear': const ag=chat.querySelector('.msg.agent:last-of-type');if(ag)ag.remove();agentEl=null;raw='';break;
+            case 'tool_call': tbs[e.tool]=addToolBlock(e.tool,e.args); break;
+            case 'tool_result': if(tbs[e.tool]){const p=e.content?e.content.slice(0,500):'';tbs[e.tool].done(p?p.length+' chars':'done',e.content);}break;
+            case 'error': addMsg('agent','Error: '+e.content); break;
+            case 'done': if(thinking)thinking.done(); break;
           }
-        } catch (e) {}
+        } catch(_) {}
       }
     }
-
-    history.push({ role: 'user', content: text });
-    if (responseText) {
-      history.push({ role: 'assistant', content: responseText });
-    }
-  } catch (e) {
-    addMessage('agent', `Connection error: ${e.message || e}`);
-  }
-
-  sendBtn.disabled = false;
-  input.focus();
+    history.push({role:'user',content:text});
+    if (raw) history.push({role:'assistant',content:raw});
+  } catch(e) { addMsg('agent','Connection error: '+(e.message||e)); }
+  sendBtn.disabled=false; input.focus();
 }
+document.getElementById('send').onclick=send;
+input.onkeydown=e=>{if(e.key==='Enter')send()};
 
-document.getElementById('send').onclick = send;
-input.onkeydown = e => { if (e.key === 'Enter') send(); };
-
-// check status
-fetch('/api/status').then(r => r.json()).then(s => {
-  document.getElementById('rag-dot').className = 'dot' + (s.rag_available ? ' on' : '');
-  document.getElementById('mcp-dot').className = 'dot' + (s.toolhub_available ? ' on' : '');
+// ═══════════════ Init ═══════════════
+refreshLaunch(); setInterval(refreshLaunch, 5000);
+refreshDocs();
+fetch('/api/status').then(r=>r.json()).then(s=>{
+  document.getElementById('modelSelect').value = s.llm_model || 'ollama-chat';
 });
 </script>
 </body>

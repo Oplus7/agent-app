@@ -1,10 +1,9 @@
 """
-Personal AI Agent — CLI tool-calling agent powered by qwen-plus.
+Personal AI Agent — CLI tool-calling agent via LiteLLM gateway.
 
 Connects to local-rag (HTTP) + mcp-toolhub (MCP) for file & knowledge ops.
 
 Usage:
-    set ALIBABA_API_KEY=sk-...
     python agent.py
 """
 
@@ -65,12 +64,8 @@ RAG_TOOLS = [
 
 class Agent:
     def __init__(self):
-        if not config.ALIBABA_API_KEY:
-            print("ERROR: ALIBABA_API_KEY not set.")
-            print('       set ALIBABA_API_KEY=sk-...')
-            sys.exit(1)
-
-        self.llm = OpenAI(api_key=config.ALIBABA_API_KEY, base_url=config.BASE_URL)
+        api_key = config.DEEPSEEK_API_KEY or "no-key-required"
+        self.llm = OpenAI(api_key=api_key, base_url=config.BASE_URL)
         self.rag = RAGClient(config.RAG_URL)
         self.toolhub = ToolHubClient(config.TOOLHUB_SERVER, config.TOOLHUB_ROOT)
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -78,11 +73,11 @@ class Agent:
     async def start(self):
         print("Initializing...")
         print(f"  LLM: {config.LLM_MODEL} @ {config.BASE_URL}")
+        print(f"  route: {config.resolve_route()}")
         if self.rag.health():
             print("  local-rag: connected")
         else:
             print("  local-rag: NOT AVAILABLE (RAG tools disabled)")
-            self._no_rag = True
 
         try:
             await self.toolhub.connect()
@@ -119,9 +114,16 @@ class Agent:
     async def _think(self):
         tools = RAG_TOOLS + self.toolhub.tool_schemas
 
+        # 按最近一条用户消息的来源路径选择路由（命中隐私白名单 → 云端，否则本地）
+        last_user = next(
+            (m["content"] for m in reversed(self.messages) if m["role"] == "user"),
+            "",
+        )
+        model = config.resolve_route(last_user)
+
         for _ in range(8):
             response = self.llm.chat.completions.create(
-                model=config.LLM_MODEL,
+                model=model,
                 messages=self.messages,
                 tools=tools,
                 temperature=0.3,

@@ -1,0 +1,12 @@
+{
+  "_comment": "隐私白名单：仅在此列表中的目录/来源允许走 deepseek-flash（云端）。其余全部默认 ollama-chat（本地）。",
+  "default_route": "ollama-chat",
+  "whitelist": {
+    "allowed_sources": [
+      "D:\\AI_Control\\docs\\public",
+      "D:\\AI_Control\\chat"
+    ],
+    "allowed_urls": [],
+    "allowed_collections": []
+  }
+}
